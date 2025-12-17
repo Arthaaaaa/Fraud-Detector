@@ -1,12 +1,28 @@
 from flask import Flask, request
 import joblib
 import numpy as np
+import warnings
 
 app = Flask(__name__)
 
-# Load model + scaler
-model = joblib.load("model.joblib")
-scaler = joblib.load("scaler.joblib")
+# Suppress version warnings
+warnings.filterwarnings('ignore', category=UserWarning)
+
+# Lazy load model + scaler (load on first use, handles version compatibility)
+_model = None
+_scaler = None
+
+def get_model():
+    global _model
+    if _model is None:
+        _model = joblib.load("model.joblib")
+    return _model
+
+def get_scaler():
+    global _scaler
+    if _scaler is None:
+        _scaler = joblib.load("scaler.joblib")
+    return _scaler
 
 HTML = """
 <!doctype html>
@@ -277,6 +293,9 @@ def predict():
         time = float(request.form["time"])
         amount = float(request.form["amount"])
         v14 = float(request.form["v14"])
+
+        model = get_model()
+        scaler = get_scaler()
 
         X = np.array([[time, amount, v14]], dtype=float)
         X_scaled = scaler.transform(X)
